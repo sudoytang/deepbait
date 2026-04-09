@@ -1,6 +1,21 @@
+# DeepBait — required packages
+# Install: pip install -r requirements.txt
+# Note: install PyTorch first following https://pytorch.org/get-started/locally/
+#       to match your CUDA version (or CPU-only).
+
+# Core ML
 torch>=2.0
 numpy>=1.24
 pandas>=2.0
+
+# Visualization
 matplotlib>=3.7
+
+# HuggingFace (Experiment 3: BART fine-tuning + HF dataset loading)
+transformers>=4.36
+datasets>=2.16
+accelerate>=0.25
+
+# Jupyter notebook
 jupyter>=1.0
 ipykernel>=6.0

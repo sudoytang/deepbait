@@ -10,4 +10,20 @@ dependencies = [
     "numpy>=2.4.3",
     "pandas>=3.0.1",
     "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "torchaudio>=2.11.0",
+    "datasets>=4.8.4",
+    "transformers>=5.4.0",
+    "accelerate>=1.13.0",
+    "git-filter-repo>=2.47.0",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+torchaudio = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true

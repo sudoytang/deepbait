@@ -127,7 +127,9 @@ def run_evaluation(args) -> None:
         output_dir=args.output_dir,
         val_split=0.1,
         batch_size=64,
-        max_seq_len=args.max_seq_len,
+        max_article_len=100,
+        max_title_len=args.max_seq_len,
+        split_seed=args.split_seed,
     )
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
     ppl = compute_perplexity(model, val_loader, criterion, device)
@@ -244,6 +246,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--max_seq_len", type=int, default=20)
     parser.add_argument("--max_len", type=int, default=20, help="Max words per generated headline")
+    parser.add_argument(
+        "--split_seed",
+        type=int,
+        default=42,
+        help="Must match training: NumPy seed for train/validation split.",
+    )
     args = parser.parse_args()
 
     run_evaluation(args)

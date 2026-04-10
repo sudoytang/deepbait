@@ -1,0 +1,136 @@
+PS D:\Documents\repos\deepbait> uv run python scripts/run_pretrain_finetune.py --split_seed 17 --pretrain_dir checkpoints/exp2_pretrain_seed17 --finetune_dir checkpoints/exp2_finetune_seed17
+Using shared vocabulary: checkpoints/shared_vocab.pt
+
+============================================================
+Stage 1: Pre-training on general news
+  CSV (all labels): data/train.csv
+  HuggingFace:      cnn_dailymail:3.0.0
+  Epochs:           10
+  LR:               0.001
+  Output:           checkpoints/exp2_pretrain_seed17/
+============================================================
+Loaded 19877 (article, title) pairs from 'data/train.csv'.
+Loading HuggingFace dataset 'cnn_dailymail:3.0.0' (split='train')...
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loaded 287113 (article, title) pairs from 'cnn_dailymail:3.0.0'.
+After HuggingFace dataset: 306990 total (article, title) pairs.
+Using preset vocabulary (size=48612).
+Dataset: 276291 samples.
+Dataset: 30699 samples.
+Model parameters: 26,781,156
+
+Starting training for 10 epochs...
+Epoch   1/10 | Train Loss: 6.8840 (PPL 976.6) | Val Loss: 6.3668 (PPL 582.2) | Time: 214.3s
+  -> New best checkpoint saved (val_loss=6.3668)
+Epoch   2/10 | Train Loss: 6.2725 (PPL 529.8) | Val Loss: 5.9826 (PPL 396.5) | Time: 213.0s
+  -> New best checkpoint saved (val_loss=5.9826)
+Epoch   3/10 | Train Loss: 5.9693 (PPL 391.2) | Val Loss: 5.7637 (PPL 318.5) | Time: 213.1s
+  -> New best checkpoint saved (val_loss=5.7637)
+Epoch   4/10 | Train Loss: 5.7796 (PPL 323.6) | Val Loss: 5.6325 (PPL 279.4) | Time: 213.9s
+  -> New best checkpoint saved (val_loss=5.6325)
+Epoch   5/10 | Train Loss: 5.6442 (PPL 282.7) | Val Loss: 5.5392 (PPL 254.5) | Time: 212.5s
+  -> New best checkpoint saved (val_loss=5.5392)
+Epoch   6/10 | Train Loss: 5.5393 (PPL 254.5) | Val Loss: 5.4647 (PPL 236.2) | Time: 212.3s
+  -> New best checkpoint saved (val_loss=5.4647)
+Epoch   7/10 | Train Loss: 5.4527 (PPL 233.4) | Val Loss: 5.4073 (PPL 223.0) | Time: 202.0s
+  -> New best checkpoint saved (val_loss=5.4073)
+Epoch   8/10 | Train Loss: 5.3782 (PPL 216.6) | Val Loss: 5.3608 (PPL 212.9) | Time: 208.2s
+  -> New best checkpoint saved (val_loss=5.3608)
+Epoch   9/10 | Train Loss: 5.3150 (PPL 203.4) | Val Loss: 5.3153 (PPL 203.4) | Time: 210.0s
+  -> New best checkpoint saved (val_loss=5.3153)
+Epoch  10/10 | Train Loss: 5.2596 (PPL 192.4) | Val Loss: 5.2821 (PPL 196.8) | Time: 204.8s
+  -> New best checkpoint saved (val_loss=5.2821)
+Loss/perplexity curves saved to 'checkpoints/exp2_pretrain_seed17\loss_curve.png'.
+
+Training complete. Best val loss: 5.2821 (PPL 196.8)
+Best checkpoint: checkpoints/exp2_pretrain_seed17\best_model.pt
+
+============================================================
+Stage 2: Fine-tuning on clickbait data
+  Weights from:     checkpoints/exp2_pretrain_seed17\best_model.pt
+  CSV (clickbait):  data/train.csv
+  Webis-17:         data/webis17/clickbait17-validation-170630
+  LR:               0.0001  (reduced from 0.001)
+  Epochs:           30  (early stop patience=8)
+  Output:           checkpoints/exp2_finetune_seed17/
+============================================================
+Using device: cuda
+Train/val split_seed (NumPy): 17
+Loaded vocab from checkpoint (size=48612).
+Loaded 3724 (article, title) pairs from 'data/train.csv'.
+Loaded 4696 pairs from Webis-17 (skipped 14798 low-score records).
+After Webis-17: 8420 total (article, title) pairs.
+Using preset vocabulary (size=48612).
+Dataset: 7578 samples.
+Dataset: 842 samples.
+Model parameters: 26,781,156
+Resuming from checkpoint: 'checkpoints/exp2_pretrain_seed17\best_model.pt'
+
+Starting training for 30 epochs...
+Early stopping patience: 8 epochs
+Epoch   1/30 | Train Loss: 6.0822 (PPL 438.0) | Val Loss: 5.5772 (PPL 264.3) | Time: 5.5s
+  -> New best checkpoint saved (val_loss=5.5772)
+Epoch   2/30 | Train Loss: 5.9959 (PPL 401.8) | Val Loss: 5.5456 (PPL 256.1) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.5456)
+Epoch   3/30 | Train Loss: 5.9382 (PPL 379.2) | Val Loss: 5.5195 (PPL 249.5) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.5195)
+Epoch   4/30 | Train Loss: 5.8874 (PPL 360.5) | Val Loss: 5.5006 (PPL 244.8) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.5006)
+Epoch   5/30 | Train Loss: 5.8493 (PPL 347.0) | Val Loss: 5.4825 (PPL 240.5) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4825)
+Epoch   6/30 | Train Loss: 5.8072 (PPL 332.7) | Val Loss: 5.4664 (PPL 236.6) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4664)
+Epoch   7/30 | Train Loss: 5.7764 (PPL 322.6) | Val Loss: 5.4539 (PPL 233.7) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4539)
+Epoch   8/30 | Train Loss: 5.7353 (PPL 309.6) | Val Loss: 5.4414 (PPL 230.8) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4414)
+Epoch   9/30 | Train Loss: 5.7140 (PPL 303.1) | Val Loss: 5.4292 (PPL 228.0) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4292)
+Epoch  10/30 | Train Loss: 5.6856 (PPL 294.6) | Val Loss: 5.4193 (PPL 225.7) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4193)
+Epoch  11/30 | Train Loss: 5.6590 (PPL 286.9) | Val Loss: 5.4102 (PPL 223.7) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4102)
+Epoch  12/30 | Train Loss: 5.6334 (PPL 279.6) | Val Loss: 5.4024 (PPL 221.9) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.4024)
+Epoch  13/30 | Train Loss: 5.6163 (PPL 274.9) | Val Loss: 5.3956 (PPL 220.4) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3956)
+Epoch  14/30 | Train Loss: 5.5884 (PPL 267.3) | Val Loss: 5.3875 (PPL 218.7) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3875)
+Epoch  15/30 | Train Loss: 5.5624 (PPL 260.4) | Val Loss: 5.3822 (PPL 217.5) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3822)
+Epoch  16/30 | Train Loss: 5.5508 (PPL 257.4) | Val Loss: 5.3764 (PPL 216.2) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3764)
+Epoch  17/30 | Train Loss: 5.5294 (PPL 252.0) | Val Loss: 5.3703 (PPL 214.9) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3703)
+Epoch  18/30 | Train Loss: 5.5081 (PPL 246.7) | Val Loss: 5.3644 (PPL 213.7) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3644)
+Epoch  19/30 | Train Loss: 5.4852 (PPL 241.1) | Val Loss: 5.3602 (PPL 212.8) | Time: 5.5s
+  -> New best checkpoint saved (val_loss=5.3602)
+Epoch  20/30 | Train Loss: 5.4683 (PPL 237.1) | Val Loss: 5.3527 (PPL 211.2) | Time: 5.5s
+  -> New best checkpoint saved (val_loss=5.3527)
+Epoch  21/30 | Train Loss: 5.4500 (PPL 232.7) | Val Loss: 5.3500 (PPL 210.6) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3500)
+Epoch  22/30 | Train Loss: 5.4376 (PPL 229.9) | Val Loss: 5.3434 (PPL 209.2) | Time: 5.5s
+  -> New best checkpoint saved (val_loss=5.3434)
+Epoch  23/30 | Train Loss: 5.4143 (PPL 224.6) | Val Loss: 5.3405 (PPL 208.6) | Time: 5.5s
+  -> New best checkpoint saved (val_loss=5.3405)
+Epoch  24/30 | Train Loss: 5.4015 (PPL 221.7) | Val Loss: 5.3360 (PPL 207.7) | Time: 5.5s
+  -> New best checkpoint saved (val_loss=5.3360)
+Epoch  26/30 | Train Loss: 5.3656 (PPL 213.9) | Val Loss: 5.3279 (PPL 206.0) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3279)
+Epoch  27/30 | Train Loss: 5.3512 (PPL 210.9) | Val Loss: 5.3250 (PPL 205.4) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3250)
+Epoch  28/30 | Train Loss: 5.3363 (PPL 207.7) | Val Loss: 5.3223 (PPL 204.9) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3223)
+Epoch  29/30 | Train Loss: 5.3184 (PPL 204.1) | Val Loss: 5.3175 (PPL 203.9) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3175)
+Epoch  30/30 | Train Loss: 5.3008 (PPL 200.5) | Val Loss: 5.3152 (PPL 203.4) | Time: 5.4s
+  -> New best checkpoint saved (val_loss=5.3152)
+Loss/perplexity curves saved to 'checkpoints/exp2_finetune_seed17\loss_curve.png'.
+
+Training complete. Best val loss: 5.3152 (PPL 203.4)
+Best checkpoint: checkpoints/exp2_finetune_seed17\best_model.pt
+
+All done.
+  Pre-train best checkpoint : checkpoints/exp2_pretrain_seed17\best_model.pt
+  Fine-tune best checkpoint : checkpoints/exp2_finetune_seed17\best_model.pt

@@ -1,0 +1,103 @@
+PS D:\Documents\repos\deepbait> uv run python scripts/run_direct.py --split_seed 99 --checkpoint_dir checkpoints/exp1_direct_seed99
+Using shared vocabulary: checkpoints/shared_vocab.pt
+============================================================
+Experiment 1: Direct clickbait training
+  CSV data:      data/train.csv
+  Webis-17:      data/webis17/clickbait17-validation-170630 (min_score=0.5)
+  Split seed:    99
+  Checkpoint:    checkpoints/exp1_direct_seed99/
+  Early stop:    patience=8
+============================================================
+Using device: cuda
+Train/val split_seed (NumPy): 99
+Loaded shared vocab from 'checkpoints/shared_vocab.pt' (size=48612).
+Loaded 3724 (article, title) pairs from 'data/train.csv'.
+Loaded 4696 pairs from Webis-17 (skipped 14798 low-score records).
+After Webis-17: 8420 total (article, title) pairs.
+Using preset vocabulary (size=48612).
+Dataset: 7578 samples.
+Dataset: 842 samples.
+Model parameters: 26,781,156
+
+Starting training for 100 epochs...
+Early stopping patience: 8 epochs
+Epoch   1/100 | Train Loss: 7.7103 (PPL 2231.3) | Val Loss: 7.1065 (PPL 1219.8) | Time: 6.0s
+  -> New best checkpoint saved (val_loss=7.1065)
+Epoch   2/100 | Train Loss: 6.9477 (PPL 1040.8) | Val Loss: 7.0349 (PPL 1135.5) | Time: 5.9s
+  -> New best checkpoint saved (val_loss=7.0349)
+Epoch   3/100 | Train Loss: 6.8194 (PPL 915.5) | Val Loss: 6.9656 (PPL 1059.5) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.9656)
+Epoch   4/100 | Train Loss: 6.6923 (PPL 806.2) | Val Loss: 6.8676 (PPL 960.6) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.8676)
+Epoch   5/100 | Train Loss: 6.5566 (PPL 703.9) | Val Loss: 6.7819 (PPL 881.7) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.7819)
+Epoch   6/100 | Train Loss: 6.4248 (PPL 616.9) | Val Loss: 6.7171 (PPL 826.5) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.7171)
+Epoch   7/100 | Train Loss: 6.3098 (PPL 549.9) | Val Loss: 6.6530 (PPL 775.1) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.6530)
+Epoch   8/100 | Train Loss: 6.1949 (PPL 490.2) | Val Loss: 6.6039 (PPL 738.0) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.6039)
+Epoch   9/100 | Train Loss: 6.0948 (PPL 443.5) | Val Loss: 6.5693 (PPL 712.8) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.5693)
+Epoch  10/100 | Train Loss: 6.0018 (PPL 404.2) | Val Loss: 6.5364 (PPL 689.8) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.5364)
+Epoch  11/100 | Train Loss: 5.9058 (PPL 367.1) | Val Loss: 6.5035 (PPL 667.5) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.5035)
+Epoch  12/100 | Train Loss: 5.8172 (PPL 336.0) | Val Loss: 6.4809 (PPL 652.6) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.4809)
+Epoch  13/100 | Train Loss: 5.7394 (PPL 310.9) | Val Loss: 6.4516 (PPL 633.7) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.4516)
+Epoch  14/100 | Train Loss: 5.6500 (PPL 284.3) | Val Loss: 6.4403 (PPL 626.6) | Time: 5.7s
+  -> New best checkpoint saved (val_loss=6.4403)
+Epoch  15/100 | Train Loss: 5.5778 (PPL 264.5) | Val Loss: 6.4161 (PPL 611.6) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.4161)
+Epoch  16/100 | Train Loss: 5.5027 (PPL 245.4) | Val Loss: 6.3903 (PPL 596.1) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3903)
+Epoch  17/100 | Train Loss: 5.4261 (PPL 227.3) | Val Loss: 6.3796 (PPL 589.7) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3796)
+Epoch  18/100 | Train Loss: 5.3577 (PPL 212.2) | Val Loss: 6.3610 (PPL 578.8) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3610)
+Epoch  19/100 | Train Loss: 5.2829 (PPL 196.9) | Val Loss: 6.3538 (PPL 574.7) | Time: 5.7s
+  -> New best checkpoint saved (val_loss=6.3538)
+Epoch  20/100 | Train Loss: 5.2211 (PPL 185.1) | Val Loss: 6.3586 (PPL 577.4) | Time: 5.8s
+  (no improvement 1/8)
+Epoch  21/100 | Train Loss: 5.1554 (PPL 173.4) | Val Loss: 6.3387 (PPL 566.1) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3387)
+Epoch  22/100 | Train Loss: 5.0913 (PPL 162.6) | Val Loss: 6.3374 (PPL 565.3) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3374)
+Epoch  23/100 | Train Loss: 5.0365 (PPL 153.9) | Val Loss: 6.3180 (PPL 554.4) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3180)
+Epoch  24/100 | Train Loss: 4.9737 (PPL 144.6) | Val Loss: 6.3134 (PPL 551.9) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3134)
+Epoch  25/100 | Train Loss: 4.9157 (PPL 136.4) | Val Loss: 6.3164 (PPL 553.6) | Time: 5.8s
+  (no improvement 1/8)
+Epoch  26/100 | Train Loss: 4.8592 (PPL 128.9) | Val Loss: 6.3174 (PPL 554.1) | Time: 5.8s
+  (no improvement 2/8)
+Epoch  27/100 | Train Loss: 4.8068 (PPL 122.3) | Val Loss: 6.3057 (PPL 547.7) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.3057)
+Epoch  28/100 | Train Loss: 4.7541 (PPL 116.1) | Val Loss: 6.2871 (PPL 537.6) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.2871)
+Epoch  29/100 | Train Loss: 4.7032 (PPL 110.3) | Val Loss: 6.2845 (PPL 536.2) | Time: 5.8s
+  -> New best checkpoint saved (val_loss=6.2845)
+Epoch  30/100 | Train Loss: 4.6580 (PPL 105.4) | Val Loss: 6.2865 (PPL 537.3) | Time: 5.8s
+  (no improvement 1/8)
+Epoch  31/100 | Train Loss: 4.6068 (PPL 100.2) | Val Loss: 6.2970 (PPL 542.9) | Time: 5.8s
+  (no improvement 2/8)
+Epoch  32/100 | Train Loss: 4.5542 (PPL 95.0) | Val Loss: 6.2960 (PPL 542.4) | Time: 5.8s
+  (no improvement 3/8)
+Epoch  33/100 | Train Loss: 4.5092 (PPL 90.9) | Val Loss: 6.2972 (PPL 543.0) | Time: 5.8s
+  (no improvement 4/8)
+Epoch  34/100 | Train Loss: 4.4204 (PPL 83.1) | Val Loss: 6.3002 (PPL 544.7) | Time: 5.7s
+  (no improvement 5/8)
+Epoch  35/100 | Train Loss: 4.3918 (PPL 80.8) | Val Loss: 6.2961 (PPL 542.4) | Time: 5.8s
+  (no improvement 6/8)
+Epoch  36/100 | Train Loss: 4.3699 (PPL 79.0) | Val Loss: 6.2965 (PPL 542.7) | Time: 5.8s
+  (no improvement 7/8)
+Epoch  37/100 | Train Loss: 4.3475 (PPL 77.3) | Val Loss: 6.3021 (PPL 545.7) | Time: 5.8s
+  (no improvement 8/8)
+
+Early stopping triggered after 37 epochs.
+Loss/perplexity curves saved to 'checkpoints/exp1_direct_seed99\loss_curve.png'.
+
+Training complete. Best val loss: 6.2845 (PPL 536.2)
+Best checkpoint: checkpoints/exp1_direct_seed99\best_model.pt

@@ -25,10 +25,12 @@ data/vocab.json
 *.zip
 
 # Model checkpoints (too large for git)
-checkpoints/*.pt
-checkpoints/*.pth
-checkpoints/history.json
-checkpoints/loss_curve.png
+*.pt
+*.pth
+*.safetensors
+*.bin
+models/
+
 
 # Generated outputs
 outputs/
@@ -46,6 +48,3 @@ desktop.ini
 *.swp
 *.swo
 
-# Logs
-*.log
-nohup.out

@@ -78,7 +78,7 @@ Two datasets are used:
 
 | Source | Size | Description |
 |--------|------|-------------|
-| [DL in NLP Spring 2019 Classification](https://kaggle.com/competitions/dlinnlp-spring-2019-clf) | ~24K total, ~3.7K clickbait | Kaggle competition dataset |
+| [DL in NLP Spring 2019 Classification](https://kaggle.com/competitions/dlinnlp-spring-2019-clf) | ~19.9K total, 3,724 clickbait | Kaggle competition dataset |
 | [Webis-Clickbait-17](https://webis.de/data/webis-clickbait-17.html) | ~4.7K clickbait | Validation set, `truthMean >= 0.5` |
 
 ### Step 1: Kaggle Dataset
@@ -292,7 +292,7 @@ uv run python src/train.py \
 
 ## Model Architecture
 
-### LSTM Encoder-Decoder (~8M parameters)
+### LSTM Encoder-Decoder (~27M parameters)
 
 ```
 Article → Embedding(128) → LSTM(256, 2 layers) → (h_n, c_n)

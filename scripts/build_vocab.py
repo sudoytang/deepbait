@@ -16,13 +16,12 @@ Usage (from project root):
     uv run python scripts/build_vocab.py --output checkpoints/my_vocab.pt
 
 What this script uses to build the vocab (in order of data volume):
-    1. CNN / DailyMail (287K articles)  -- HuggingFace, downloaded automatically
-    2. data/train.csv (all labels, 24K articles)
-    3. data/webis17/...  (19K posts, optional)
+    1. data/train.csv (all labels, ~19.9K articles)
+    2. data/webis17/...  (~19K posts, optional)
+    3. CNN / DailyMail (287K articles)  -- HuggingFace, downloaded automatically
 
-With min_freq=100 on this corpus the resulting vocabulary is ~25K words,
-which is large enough to cover clickbait topics yet small enough to keep
-model parameters comparable to Exp 1's natural vocabulary.
+With min_freq=100 on this corpus the resulting vocabulary is ~48.6K words.
+All LSTM experiments share this vocabulary so PPL scores are directly comparable.
 """
 
 import argparse

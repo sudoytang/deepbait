@@ -1,0 +1,482 @@
+\documentclass{article}
+\usepackage[final]{neurips_2023}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{multirow}
+
+
+\title{DeepBait: Article-Conditioned Clickbait Headline Generation Using Deep Learning}
+
+
+\author{%
+  Irys Zhang\\
+  Department of ECE\\
+  University of Toronto\\
+  \texttt{irys.zhang@mail.utoronto.ca} \\
+  \And
+  Jiangchuan Yu\\
+  Department of ECE\\
+  University of Toronto\\
+  \texttt{jiangchuan.yu@mail.utoronto.ca} \\
+  \And
+  Yushun Tang\\
+  Department of ECE\\
+  University of Toronto\\
+  \texttt{yushun.tang@mail.utoronto.ca} \\
+}
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+We develop a deep learning system that reads a news article and generates a clickbait-style headline for it.
+We frame the task as a sequence-to-sequence problem and systematically compare three training strategies:
+(i)~a custom LSTM encoder--decoder trained directly on clickbait data,
+(ii)~a two-stage LSTM that pretrains on all available articles then fine-tunes on clickbait pairs, and
+(iii)~fine-tuning a pre-trained BART-Large-CNN transformer.
+Clickbait training data combines the Kaggle DL in NLP 2019 dataset ($3{,}724$ clickbait pairs) with the Webis Clickbait Corpus 2017 validation set ($4{,}696$ pairs), yielding $8{,}420$ article--title pairs; two-stage pretraining additionally uses the CNN/DailyMail corpus (${\sim}307$K pairs).
+All experiments are repeated with three random seeds.
+Two-stage pretraining reduces LSTM validation perplexity from $548 \rightarrow 192$ ($2.9\times$); BART fine-tuning achieves a subword-level evaluation loss of $2.09 \pm 0.10$ after only 1--3 epochs, producing fluent, article-relevant headlines.
+\end{abstract}
+
+\section*{Attestation of Teamwork}
+\begin{itemize}
+\item \textbf{Irys Zhang:} Dataset preprocessing, tokenization pipeline, vocabulary construction, Webis-17 data integration, and data loading infrastructure (\texttt{data\_processing.py}).
+\item \textbf{Jiangchuan Yu:} Neural network architecture design and implementation (LSTM encoder--decoder, BART fine-tuning), training loops, and checkpoint management (\texttt{model.py}, \texttt{train.py}, \texttt{run\_bart\_finetune.py}).
+\item \textbf{Yushun Tang:} Text generation with temperature sampling, evaluation scripts, demo notebook, and qualitative analysis (\texttt{generate.py}, \texttt{evaluate.py}, \texttt{demo.ipynb}).
+\item \textbf{All members:} Experimental design, hyperparameter tuning, cross-seed experiments, results analysis, report writing, and presentation preparation.
+\end{itemize}
+
+
+
+\section{Introduction}
+
+Online media platforms routinely employ clickbait headlines---curiosity-driven, emotionally charged titles designed to maximise user clicks~[3].
+Automating the generation of such headlines is both a practical NLP challenge and a window into how language structure influences engagement~[8].
+
+Our initial proposal trained a standalone LSTM to generate clickbait headlines unconditionally from a seed phrase, with no article input.
+In this report we present \textbf{DeepBait}, a redesigned system that takes an article as input and produces a clickbait headline via \emph{sequence-to-sequence} (seq2seq) modelling.
+We compare three approaches:
+(1)~a direct LSTM encoder--decoder,
+(2)~a two-stage LSTM with pretraining on all articles then fine-tuning on clickbait, and
+(3)~fine-tuning BART-Large-CNN~[2].
+Each experiment is repeated with three random seeds $\{42, 17, 99\}$.
+
+
+\section{Preliminaries and Problem Formulation}
+
+\paragraph{Sequence-to-sequence generation.}
+Given an article $\mathbf{x} = (x_1, x_2, \ldots, x_S)$ of $S$ tokens, the goal is to generate a clickbait headline $\mathbf{y} = (y_1, y_2, \ldots, y_T)$ of $T$ tokens.
+We model the conditional probability:
+\[
+P(\mathbf{y} \mid \mathbf{x}) = \prod_{t=1}^{T} P(y_t \mid y_{<t}, \mathbf{x})
+\]
+where $y_{<t} = (y_1, \ldots, y_{t-1})$ denotes the previously generated tokens.
+The model is trained to minimise cross-entropy loss over training set $\mathcal{D}$:
+\vspace{-2mm}
+\[
+\mathcal{L} = -\frac{1}{|\mathcal{D}|} \sum_{(\mathbf{x}, \mathbf{y}) \in \mathcal{D}} \sum_{t=1}^{T} \log P_\theta(y_t \mid y_{<t}, \mathbf{x})
+\]
+Padding tokens are masked so they do not contribute to the loss.
+
+\paragraph{Evaluation metric.}
+We use \textbf{perplexity} (PPL), the exponentiated average cross-entropy: $\text{PPL} = \exp(\mathcal{L})$.
+Lower perplexity indicates better predictive performance.
+For LSTM experiments, PPL is computed over word-level tokens; for BART, over BPE subwords---the two are not directly comparable in absolute value.
+
+\paragraph{Teacher forcing.}
+During training the decoder receives the ground-truth previous token rather than its own prediction, accelerating convergence.
+
+
+\section{Design}
+
+\subsection{LSTM Encoder--Decoder (Experiments 1 \& 2)}
+
+The LSTM-based model comprises an encoder and decoder sharing the same vocabulary, embedding dimension ($d_e = 128$), and hidden dimension ($d_h = 256$):
+
+\textbf{Article Encoder.}
+The encoder maps an article token sequence (truncated to 100 tokens) through an embedding layer and a 2-layer LSTM.
+Only the final hidden state $(h_n, c_n)$ is retained as a fixed-length context vector:
+$(h_n, c_n) = \text{LSTM}_{\text{enc}}(\text{Embed}(x_1, \ldots, x_S))$.
+
+\textbf{Clickbait Decoder.}
+The decoder is a 2-layer LSTM initialised with the encoder's final hidden state.
+At each step it produces logits over the full vocabulary via a linear projection:
+$\text{logits}_t = W_o \cdot \text{LSTM}_{\text{dec}}(y_{t-1}, h_{t-1}, c_{t-1}) + b_o$.
+
+\textbf{Seq2Seq Wrapper.}
+The \texttt{Seq2SeqClickbait} module combines encoder and decoder.
+During training it performs a full forward pass with teacher forcing; during inference it exposes \texttt{encode()} and \texttt{decode\_step()} for autoregressive generation.
+The combined model has ${\sim}27$M trainable parameters (dominated by two $48{,}612 \times 128$ embedding matrices and the output projection).
+
+\subsection{BART Transformer (Experiment 3)}
+
+BART (Bidirectional and Auto-Regressive Transformers)~[2] is a denoising autoencoder pre-trained by corrupting text and learning to reconstruct the original.
+We use \texttt{facebook/bart-large-cnn}, which has been further fine-tuned on CNN/DailyMail summarisation.
+It contains 12 encoder layers, 12 decoder layers, hidden dimension 1024, and 16 attention heads, totalling ${\sim}406$M parameters---roughly $15\times$ larger than our LSTM.
+Since BART can already ``read an article and write a short summary,'' we only need a few epochs of fine-tuning to shift its output style toward clickbait phrasing.
+
+
+\section{Methodology}
+
+\paragraph{Data pipeline.}
+All text is lowercased, punctuation is removed (except apostrophes), and whitespace is normalised.
+A shared vocabulary is built from both articles and titles in the training split; words appearing fewer than \texttt{min\_freq} times map to \texttt{<UNK>}.
+Four special tokens are reserved: \texttt{<PAD>}~(0), \texttt{<UNK>}~(1), \texttt{<START>}~(2), \texttt{<END>}~(3).
+Each sample becomes a triple \texttt{(article, dec\_input, target)} with fixed-length padding.
+
+\paragraph{Exp.~1: Direct Training.}
+The LSTM encoder--decoder is trained from random initialisation on clickbait article--title pairs only.
+Adam optimiser ($\text{lr} = 10^{-3}$), gradient clipping (max norm 1.0), early stopping (patience~8), up to 100 epochs, batch size 64.
+
+\paragraph{Exp.~2: Two-Stage Training.}
+\emph{Stage~1 (Pretrain):} The LSTM is trained for 10 epochs on a large general-purpose corpus: all $19{,}877$ article--title pairs from Kaggle (regardless of clickbait label) combined with $287{,}113$ pairs from the CNN/DailyMail summarisation dataset~[10], totalling ${\sim}307{,}000$ pairs.
+This teaches general article-to-title mapping.
+\emph{Stage~2 (Fine-tune):} The pretrained weights are loaded and training continues for 30 epochs on clickbait-only pairs with a reduced learning rate ($10^{-4}$, down from $10^{-3}$), allowing the model to specialise in clickbait style.
+The vocabulary from Stage~1 is reused.
+
+\paragraph{Exp.~3: BART Fine-Tuning.}
+The pre-trained BART-Large-CNN is fine-tuned using the HuggingFace \texttt{Seq2SeqTrainer}.
+Per-device batch size 4 with 4 gradient accumulation steps (effective batch~16), lr $3{\times}10^{-5}$, linear warmup (100 steps), weight decay 0.01, FP16 mixed precision, early stopping (patience~3).
+Articles are truncated to 512 subwords, titles to 64.
+
+\paragraph{Temperature sampling for inference.}
+At each decoding step, the logit vector $\mathbf{z}$ is scaled by temperature $T$ before softmax: $P_i = \exp(z_i / T) / \sum_j \exp(z_j / T)$.
+Lower $T$ sharpens the distribution (conservative); $T{=}0.8$ balances diversity and coherence; higher $T$ increases creativity at the cost of coherence.
+
+
+\section{Numerical Experiments}
+
+\subsection{Dataset}
+
+We combine two data sources (Table~\ref{tab:dataset}), yielding $8{,}420$ clickbait article--title pairs.
+A 90/10 train/validation split is applied after shuffling, producing $7{,}578$ training and $842$ validation pairs.
+For Exp.~2 pretraining, all $19{,}877$ articles from Kaggle (regardless of label) are combined with $287{,}113$ pairs from the CNN/DailyMail summarisation corpus~[10], giving ${\sim}307{,}000$ article--title pairs.
+
+\begin{table}[ht]
+  \caption{Dataset composition for clickbait experiments.}
+  \label{tab:dataset}
+  \centering
+  \small
+  \begin{tabular}{lrl}
+    \toprule
+    Source & Pairs & Notes \\
+    \midrule
+    Kaggle DL in NLP 2019~[7] & 3,724 & Clickbait-labelled rows from \texttt{train.csv} \\
+    Webis Clickbait Corpus 2017~[3,\,9] & 4,696 & Validation set, \texttt{truthMean} $\geq 0.5$ \\
+    \midrule
+    \textbf{Combined clickbait total} & $\mathbf{8{,}420}$ & \\
+    \midrule
+    Kaggle (all labels) + CNN/DailyMail~[10] & ${\sim}307$K & Exp.~2 pretraining only \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Hyperparameters}
+
+Table~\ref{tab:hyperparams} summarises the key hyperparameters.
+All experiments were run on an NVIDIA RTX 4060 Laptop GPU.
+LSTM clickbait training took ${\sim}6$s/epoch; LSTM pretraining on CNN/DailyMail took ${\sim}3.5$min/epoch; BART fine-tuning took ${\sim}45$min/epoch.
+
+\begin{table}[ht]
+  \caption{Hyperparameter settings across experiments.}
+  \label{tab:hyperparams}
+  \centering
+  \small
+  \begin{tabular}{lcc}
+    \toprule
+    Parameter & Exp.~1 \& 2 (LSTM) & Exp.~3 (BART) \\
+    \midrule
+    Total parameters & ${\sim}27$M & ${\sim}406$M \\
+    Embed / Hidden dim & 128 / 256 & 1024 / 1024 (built-in) \\
+    Num layers & 2 & 12 + 12 \\
+    Dropout & 0.3 & 0.1 (built-in) \\
+    Batch size & 64 & $4 \times 4$ accum = 16 \\
+    Learning rate & $1 \times 10^{-3}$ ($10^{-4}$ finetune) & $3 \times 10^{-5}$ \\
+    Max article / title len & 100 / 20 tokens & 512 / 64 subwords \\
+    Optimiser & Adam & AdamW (wd=0.01) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\subsection{Results}
+
+Table~\ref{tab:results} provides the main comparison across all three experiments, each repeated with seeds $\{42, 17, 99\}$.
+Estimated total training times are included based on per-epoch wall-clock measurements on the RTX 4060.
+
+\begin{table}[ht]
+  \caption{Summary results (mean $\pm$ std over three seeds). Training time estimated from per-epoch wall-clock on RTX 4060.}
+  \label{tab:results}
+  \centering
+  \small
+  \begin{tabular}{lcccccc}
+    \toprule
+    Experiment & Params & Epochs & Best Val Loss & Best Val PPL & Token & Time \\
+    \midrule
+    1: Direct LSTM & ${\sim}27$M & 37--42 & $6.305 \pm 0.041$ & $547.7 \pm 22.7$ & word & ${\sim}4$m \\
+    2a: Pretrain (all) & ${\sim}27$M & 10 & $5.267 \pm 0.016$ & $193.8 \pm 3.0$ & word & ${\sim}35$m \\
+    2b: Finetune (CB) & ${\sim}27$M & 30 & $5.257 \pm 0.052$ & $192.2 \pm 9.9$ & word & ${\sim}3$m \\
+    3: BART-Large-CNN & ${\sim}406$M & 3--5 & $2.091 \pm 0.102$ & --- & subword & ${\sim}2$--$4$h \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Exp.~1: Direct LSTM.}
+Validation loss decreases monotonically for ${\sim}25$--30 epochs before plateauing, with a large train--val gap (${\sim}4.3$ vs ${\sim}6.3$) indicating severe overfitting.
+Per-seed: seed~42 achieves best val loss 6.278 (PPL~533) at epoch~32, seed~17 reaches 6.353 (PPL~574) at epoch~34, and seed~99 reaches 6.284 (PPL~536) at epoch~29.
+
+\paragraph{Exp.~2: Two-Stage LSTM.}
+During pretraining, training loss decreases from ${\sim}6.88$ to ${\sim}5.23$ and validation loss from ${\sim}6.37$ to ${\sim}5.25$ over 10 epochs, showing the larger dataset (${\sim}307{,}000$ pairs) prevents overfitting.
+After 30 epochs of fine-tuning on clickbait data, the validation loss decreases gradually from ${\sim}5.50$ to ${\sim}5.22$ with a very small train--val gap (${\sim}0.05$).
+Per-seed finetune: seed~42 achieves 5.216 (PPL~185), seed~17 reaches 5.315 (PPL~203), seed~99 reaches 5.240 (PPL~189).
+All seeds show continued improvement through epoch~30.
+
+\paragraph{Exp.~3: BART Fine-Tuning.}
+BART achieves strong results within 1--3 epochs; further training \emph{degrades} performance.
+Seed~42 (3 epochs) peaks at epoch~1 (eval loss 2.038, then $2.171 \rightarrow 2.334$), seed~99 (5 epochs) at epoch~2 (2.026), seed~17 (5 epochs) at epoch~3 (2.208).
+All runs trigger early stopping, confirming rapid overfitting of the 406M-parameter model on $8{,}420$ samples.
+
+\paragraph{Runtime comparison.}
+BART fine-tuning is the most expensive per epoch (${\sim}45$ min/epoch), but converges in only 3--5 epochs (${\sim}2$--$4$ hours total).
+The two-stage LSTM requires ${\sim}35$ min for pretraining (10 epochs on ${\sim}307$K pairs at ${\sim}3.5$ min/epoch) plus ${\sim}3$ min for fine-tuning (30 epochs at ${\sim}6$s/epoch), totalling ${\sim}38$ min.
+The direct LSTM requires only ${\sim}4$ min for 37--42 epochs at ${\sim}6$s/epoch.
+All timings use a single RTX 4060 GPU (FP16 for BART).
+
+
+\subsection{Qualitative Examples}
+
+Table~\ref{tab:examples} shows headlines generated with $T{=}0.8$.
+The LSTM captures generic clickbait vocabulary (``you won't believe'', ``this is why'') but produces article-agnostic headlines.
+BART generates much more specific, fluent headlines that reference actual content from the input article.
+
+\begin{table}[ht]
+  \caption{Example generated headlines ($T = 0.8$).}
+  \label{tab:examples}
+  \centering
+  \small
+  \begin{tabular}{p{4.2cm}p{3.8cm}p{4.2cm}}
+    \toprule
+    Article (truncated) & Exp.~2 (LSTM) & Exp.~3 (BART) \\
+    \midrule
+    ``Eating chocolate daily may improve memory in older adults\ldots'' & ``you won't believe what this food does to your brain'' & ``This Everyday Snack Could Be the Key to Better Memory'' \\
+    \addlinespace
+    ``MIT developed an AI that diagnoses rare diseases\ldots'' & ``this is why doctors are worried'' & ``New AI Outperforms Doctors at Diagnosing Rare Diseases'' \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\section{Discussion}
+
+\paragraph{Why does pretraining help so much?}
+The $2.9\times$ perplexity improvement (548 $\rightarrow$ 192) between Exp.~1 and~2 uses the \emph{identical} architecture (${\sim}27$M parameters), so the entire gain comes from the training strategy.
+Seq2seq training requires simultaneously learning two skills: (1)~reading and compressing an article, and (2)~generating a stylistically appropriate headline.
+With only $8{,}420$ clickbait pairs the model cannot learn both from scratch.
+Pretraining on ${\sim}307{,}000$ pairs (including CNN/DailyMail) first teaches skill~(1), so fine-tuning only needs to adjust skill~(2)~[5].
+
+\paragraph{Encoder bottleneck.}
+The LSTM encoder compresses the entire article into a single 256-dim hidden vector.
+This is a well-known limitation of vanilla seq2seq models~[6]: with no attention mechanism, information from long articles is inevitably lost.
+Truncating to 100 tokens (lead paragraph) partially mitigates this; adding attention~[4,~6] would likely yield significant improvement.
+
+\paragraph{BART's data efficiency and overfitting.}
+BART achieves its best performance within 1--3 epochs---its pre-trained representations already encode strong language understanding, and clickbait fine-tuning merely ``steers'' the output style.
+However, continued training rapidly overfits (seed~42 eval loss: $2.038 \rightarrow 2.334$ over two epochs), highlighting the tension between model capacity ($406$M) and dataset size ($8{,}420$).
+BART's BPE tokenizer also handles out-of-vocabulary words that the LSTM maps to \texttt{<UNK>}.
+
+\paragraph{Seed robustness.}
+All experiments show CV below 5\% across seeds (LSTM: 0.65--0.99\%, BART: 4.88\%).
+BART's higher sensitivity is driven by the seed~42 run converging unusually fast (best at epoch~1 vs epochs~2--3 for other seeds), suggesting the train/validation partition matters more for large models.
+
+\paragraph{Limitations.}
+We evaluate only with perplexity, not ROUGE, BLEU, or human judgement.
+The clickbait dataset ($8{,}420$ pairs) is small, biasing models toward memorisation.
+The LSTM lacks attention, and we did not test intermediate architectures (GRU, small transformers).
+
+
+\section{Conclusions}
+
+We presented DeepBait, a system for article-conditioned clickbait headline generation, and systematically compared three training approaches of increasing sophistication.
+Our key findings are:
+
+\begin{enumerate}
+\item \textbf{Pretraining matters:} Two-stage LSTM pretraining reduced validation perplexity from $548 \rightarrow 192$ ($2.9\times$) using the same 27M-parameter architecture.
+This demonstrates that task-related pretraining is critical when labelled data is limited.
+
+\item \textbf{Scale matters:} BART-Large-CNN achieved substantially better results with only 1--3 fine-tuning epochs, leveraging its 406M pre-trained parameters and BPE vocabulary.
+
+\item \textbf{Robustness:} All approaches showed stable results across three random seeds (CV ${<}5\%$), confirming that our findings are not artefacts of a particular data split.
+
+\item \textbf{Data is the binding constraint:} Both the direct LSTM and BART (after few epochs) overfit on our $8{,}420$-sample clickbait dataset, confirming that data quantity is the primary bottleneck.
+\end{enumerate}
+
+Future work includes adding attention to the LSTM, acquiring the full Webis-17 training set (${\sim}38{,}500$ more clickbait samples), evaluating with ROUGE/BLEU and human judgement, and experimenting with smaller transformers (BART-base, T5-small) less prone to overfitting.
+
+%===================================================================
+\newpage
+\section*{References}
+%===================================================================
+\medskip
+{
+\small
+
+[1] Hochreiter, S.\ \& Schmidhuber, J.\ (1997) Long Short-Term Memory.
+\textit{Neural Computation}, 9(8):1735--1780.
+
+[2] Lewis, M., Liu, Y., Goyal, N., Ghazvininejad, M., Mohamed, A., Levy, O., Stoyanov, V.\ \& Zettlemoyer, L.\ (2020) BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension.
+\textit{Proceedings of the 58th Annual Meeting of the ACL}, pp.~7871--7880.
+
+[3] Potthast, M., Gollub, T., Hagen, M.\ \& Stein, B.\ (2018) The Clickbait Challenge 2017: Towards a Regression Model for Clickbait Strength.
+\textit{arXiv preprint arXiv:1812.10847}.
+
+[4] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, {\L}.\ \& Polosukhin, I.\ (2017) Attention Is All You Need.
+\textit{Advances in Neural Information Processing Systems 30}, pp.~5998--6008.
+
+[5] Howard, J.\ \& Ruder, S.\ (2018) Universal Language Model Fine-tuning for Text Classification.
+\textit{Proceedings of the 56th Annual Meeting of the ACL}, pp.~328--339.
+
+[6] Bahdanau, D., Cho, K.\ \& Bengio, Y.\ (2015) Neural Machine Translation by Jointly Learning to Align and Translate.
+\textit{Proceedings of ICLR 2015}.
+
+[7] guitaricet (2019) DL in NLP Spring 2019.\ Classification.
+\url{https://kaggle.com/competitions/dlinnlp-spring-2019-clf}. Kaggle.
+
+[8] Supriyono, Wibawa, A.P., Suyono \& Kurniawan, F.\ (2024) Advancements in Natural Language Processing: Implications, Challenges, and Future Directions.
+\textit{Telematics and Informatics Reports}, 16:100173.
+
+[9] Potthast, M., Gollub, T., Wiegmann, M., Stein, B.\ \& Hagen, M.\ (2017) Webis-Clickbait-17 Dataset.
+\url{https://webis.de/data/webis-clickbait-17.html}.
+
+[10] Hermann, K.M., Kocisky, T., Grefenstette, E., Espeholt, L., Kay, W., Suleyman, M.\ \& Blunsom, P.\ (2015) Teaching Machines to Read and Comprehend.
+\textit{Advances in Neural Information Processing Systems 28}, pp.~1693--1701.
+
+}
+
+\section*{Appendix}
+
+\subsection*{A. Detailed Per-Seed Results}
+
+\begin{table}[ht]
+  \caption{Experiment~1 --- Direct LSTM per-seed results.}
+  \centering
+  \small
+  \begin{tabular}{ccccc}
+    \toprule
+    Seed & Epochs & Best Epoch & Best Val Loss & Best Val PPL \\
+    \midrule
+    42 & 40 & 32 & 6.278 & 533.0 \\
+    17 & 42 & 34 & 6.353 & 573.9 \\
+    99 & 37 & 29 & 6.284 & 536.2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \caption{Experiment~2 --- Two-stage LSTM per-seed results.}
+  \centering
+  \small
+  \begin{tabular}{cccccc}
+    \toprule
+    Seed & \multicolumn{2}{c}{Pretrain (10 ep.)} & \multicolumn{2}{c}{Finetune (30 ep.)} \\
+    \cmidrule(lr){2-3} \cmidrule(lr){4-5}
+     & Val Loss & Val PPL & Val Loss & Val PPL \\
+    \midrule
+    42 & 5.251 & 190.7 & 5.216 & 184.5 \\
+    17 & 5.282 & 196.8 & 5.315 & 203.4 \\
+    99 & 5.268 & 194.0 & 5.240 & 188.7 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \caption{Experiment~3 --- BART fine-tuning per-seed results.}
+  \centering
+  \small
+  \begin{tabular}{ccccc}
+    \toprule
+    Seed & Epochs Run & Best Epoch & Best Eval Loss & Eval Loss (ep.\ 1) \\
+    \midrule
+    42 & 3 & 1 & 2.038 & 2.038 \\
+    17 & 5 & 3 & 2.208 & 2.253 \\
+    99 & 5 & 2 & 2.026 & 2.159 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\subsection*{B. Training History Summaries}
+
+\paragraph{Exp.~1.} Train loss: ${\sim}7.7 \rightarrow 4.3$ over 37--42 epochs (${\sim}6$s/epoch). Val loss plateaus at ${\sim}6.28$--$6.35$ with widening train--val gap (overfitting). Early stopping (patience~8) triggered between epochs 37--42.
+
+\paragraph{Exp.~2 Pretrain.} Train loss: ${\sim}6.88 \rightarrow 5.23$; val loss: ${\sim}6.37 \rightarrow 5.25$ over 10 epochs (${\sim}3.5$min/epoch on ${\sim}307$K pairs) with converging gap.
+
+\paragraph{Exp.~2 Finetune.} From pretrained checkpoint, val loss improves ${\sim}5.50 \rightarrow 5.22$ over 30 epochs (${\sim}5.4$s/epoch). Train--val gap remains small (${\sim}0.05$).
+
+\paragraph{Exp.~3 BART.} Eval loss per epoch for seed~42: $2.038 \rightarrow 2.171 \rightarrow 2.334$ (3 epochs, ${\sim}45$min/epoch). Total FLOPs: $2.45 \times 10^{16}$ (3 epochs). Seeds 17/99 ran 5 epochs with early stopping.
+
+
+\subsection*{C. Reproducibility}
+
+\begin{verbatim}
+# Exp 1 (repeat with --split_seed 17/99)
+uv run python scripts/run_direct.py \
+  --split_seed 42 \
+  --checkpoint_dir checkpoints/exp1_direct
+
+# Exp 2 Stages 1+2 (repeat with --split_seed 17/99)
+uv run python scripts/run_pretrain_finetune.py \
+  --split_seed 42 \
+  --pretrain_dir checkpoints/exp2_pretrain \
+  --finetune_dir checkpoints/exp2_finetune
+
+# Exp 3
+python scripts/run_bart_finetune.py
+\end{verbatim}
+
+
+\newpage
+\section*{Use of AI}
+AI tools (Claude, ChatGPT) were used to support development and documentation.
+Generative AI assisted with: (1)~architectural design decisions for the encoder--decoder conversion, (2)~debugging data pipeline issues and PyTorch implementation details, (3)~improving report clarity and structure, and (4)~generating boilerplate code for HuggingFace Trainer integration.
+All AI-generated code was reviewed, tested, and adapted by team members before integration.
+
+\section*{Contest for Information Sharing}
+As part of this course, we may share selected project materials (e.g., reports, presentation slides, and presentation recordings) on the course webpage as learning resources for future students. Additionally, we may use anonymized project information for internal statistical analysis of course outcomes. Please indicate your preferences below. \textit{Your choices will not affect your grade in any way.}
+
+\subsection*{Consent for Sharing Project Materials}
+\begin{itemize}
+	\item All group members consent to allow the project materials (report, slides, and presentation recording) to be shared on the course page for future students.
+\end{itemize}
+
+\subsection*{Consent for Use of Project Information in Statistical Analysis}
+\begin{itemize}
+	\item All group members consent to allow anonymized information about the project (e.g., topic, methods, outcomes, grades) to be used by the instructor for statistical analysis and course improvement.
+\end{itemize}
+
+\subsection*{Optional Comments}
+No additional comments.
+
+\subsection*{Group Identification}
+
+\begin{itemize}
+	\item Group number: Group 23
+	\item Names of group members: Irys Zhang, Jiangchuan Yu, Yushun Tang
+	\item Signature of group members:
+	\item Date: April 9, 2026
+\end{itemize}
+
+\end{document}

@@ -311,16 +311,6 @@ Pre-trained transformer with 12 encoder + 12 decoder layers, fine-tuned with Hug
 
 ---
 
-## Demo Notebook
-
-```bash
-uv run jupyter notebook notebooks/demo.ipynb
-```
-
-The notebook demonstrates loading a trained model, generating headlines for sample articles, and visualising training curves.
-
----
-
 ## Team Contributions
 
 - **Irys Zhang:** Dataset preprocessing, tokenization pipeline, vocabulary construction, Webis-17 data integration (`data_processing.py`)
